@@ -1,7 +1,3 @@
-# RAG Chatbot
-
-A Retrieval-Augmented Generation (RAG) chatbot that allows users to upload documents and ask questions about their content. The chatbot uses Google's Gemini Pro model for generating responses and FAISS for efficient document retrieval.
-
 ## Features
 
 - Document upload support for PDF, DOC, and DOCX files
@@ -9,12 +5,6 @@ A Retrieval-Augmented Generation (RAG) chatbot that allows users to upload docum
 - Interactive chat interface
 - Document-based question answering
 - Modern, responsive UI
-
-## Prerequisites
-
-- Python 3.8 or higher
-- Node.js 16 or higher
-- Google API key for Gemini Pro
 
 ## Setup
 
