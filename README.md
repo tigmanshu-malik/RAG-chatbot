@@ -1,54 +1,74 @@
-# React + TypeScript + Vite
+# RAG Chatbot
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A Retrieval-Augmented Generation (RAG) chatbot that allows users to upload documents and ask questions about their content. The chatbot uses Google's Gemini Pro model for generating responses and FAISS for efficient document retrieval.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Document upload support for PDF, DOC, and DOCX files
+- Real-time document processing and embedding
+- Interactive chat interface
+- Document-based question answering
+- Modern, responsive UI
 
-## Expanding the ESLint configuration
+## Prerequisites
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Python 3.8 or higher
+- Node.js 16 or higher
+- Google API key for Gemini Pro
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## Setup
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd RAG-chatbot
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+2. Install Python dependencies:
+```bash
+pip install -r requirements.txt
 ```
+
+3. Install frontend dependencies:
+```bash
+npm install
+```
+
+4. Create a `.env` file in the root directory and add your Google API key:
+```
+GOOGLE_API_KEY=your_api_key_here
+```
+
+## Running the Application
+
+1. Start the backend server:
+```bash
+python backend.py
+```
+
+2. In a new terminal, start the frontend development server:
+```bash
+npm run dev
+```
+
+3. Open your browser and navigate to `http://localhost:5173`
+
+## Usage
+
+1. Click the "Upload More" button to upload your documents
+2. Wait for the documents to be processed
+3. Start asking questions about the content of your documents
+4. The chatbot will retrieve relevant information and generate responses based on the document content
+
+## Architecture
+
+- Frontend: React with TypeScript and Material-UI
+- Backend: FastAPI
+- Document Processing: PyPDF2, python-docx
+- Embeddings: Google Gemini Pro
+- Vector Store: FAISS
+- Text Splitting: LangChain
+
+## License
+
+MIT

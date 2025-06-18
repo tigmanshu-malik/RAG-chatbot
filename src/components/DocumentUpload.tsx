@@ -1,5 +1,5 @@
-import { Box, Typography, Paper, Modal, IconButton } from '@mui/material';
-import { useCallback } from 'react';
+import { Box, Typography, Paper, Modal, IconButton, CircularProgress } from '@mui/material';
+import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import CloseIcon from '@mui/icons-material/Close';
 
@@ -9,17 +9,40 @@ interface DocumentUploadProps {
 }
 
 const DocumentUpload = ({ onUploadComplete, onClose }: DocumentUploadProps) => {
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    // Here you would typically handle the file upload
-    console.log(acceptedFiles);
-    onUploadComplete();
+  const [isUploading, setIsUploading] = useState(false);
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    try {
+      setIsUploading(true);
+      const formData = new FormData();
+      acceptedFiles.forEach(file => {
+        formData.append('files', file);
+      });
+
+      const response = await fetch('http://localhost:8000/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      console.log('Upload result:', result);
+      onUploadComplete();
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload files. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
   }, [onUploadComplete]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'application/pdf': ['.pdf'],
-      'text/plain': ['.txt'],
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
     },
@@ -33,11 +56,11 @@ const DocumentUpload = ({ onUploadComplete, onClose }: DocumentUploadProps) => {
         width: '80%',
         maxWidth: 600,
         textAlign: 'center',
-        cursor: 'pointer',
+        cursor: isUploading ? 'default' : 'pointer',
         bgcolor: 'background.paper',
         position: 'relative',
         '&:hover': {
-          bgcolor: 'action.hover',
+          bgcolor: isUploading ? 'background.paper' : 'action.hover',
         },
       }}
     >
@@ -52,19 +75,29 @@ const DocumentUpload = ({ onUploadComplete, onClose }: DocumentUploadProps) => {
             right: 8,
             top: 8,
           }}
+          disabled={isUploading}
         >
           <CloseIcon />
         </IconButton>
       )}
-      <input {...getInputProps()} />
-      <Typography variant="h5" gutterBottom>
-        {isDragActive
-          ? 'Drop the files here...'
-          : 'Drag and drop your documents here, or click to select files'}
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        Supported formats: PDF, TXT, DOC, DOCX
-      </Typography>
+      <input {...getInputProps()} disabled={isUploading} />
+      {isUploading ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <CircularProgress />
+          <Typography variant="h6">Uploading files...</Typography>
+        </Box>
+      ) : (
+        <>
+          <Typography variant="h5" gutterBottom>
+            {isDragActive
+              ? 'Drop the files here...'
+              : 'Drag and drop your documents here, or click to select files'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Supported formats: PDF, DOC, DOCX
+          </Typography>
+        </>
+      )}
     </Paper>
   );
 

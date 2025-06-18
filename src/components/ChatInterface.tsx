@@ -49,19 +49,14 @@ const ChatInterface = ({ onNewUpload }: ChatInterfaceProps) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [chats, setChats] = useState<Chat[]>([
     { 
       id: 1, 
       title: 'Document Analysis', 
       messages: [],
-      lastUpdated: new Date(Date.now() - 1000 * 60 * 30) // 30 minutes ago
-    },
-    { 
-      id: 2, 
-      title: 'Research Discussion', 
-      messages: [],
-      lastUpdated: new Date(Date.now() - 1000 * 60 * 60 * 2) // 2 hours ago
-    },
+      lastUpdated: new Date()
+    }
   ]);
 
   const formatTime = (date: Date) => {
@@ -77,16 +72,52 @@ const ChatInterface = ({ onNewUpload }: ChatInterfaceProps) => {
     return 'Just now';
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (message.trim()) {
-      const newMessage: Message = {
+      const userMessage: Message = {
         id: Date.now(),
         text: message,
         isUser: true,
         timestamp: new Date(),
       };
-      setMessages([...messages, newMessage]);
+      setMessages(prev => [...prev, userMessage]);
       setMessage('');
+      setIsLoading(true);
+
+      try {
+        const response = await fetch('http://localhost:8000/query', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query: message }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to get response');
+        }
+
+        const result = await response.json();
+        
+        const botMessage: Message = {
+          id: Date.now() + 1,
+          text: result.status === 'success' ? result.answer : result.message,
+          isUser: false,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, botMessage]);
+      } catch (error) {
+        console.error('Error:', error);
+        const errorMessage: Message = {
+          id: Date.now() + 1,
+          text: 'Sorry, I encountered an error while processing your request. Please try again.',
+          isUser: false,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -270,81 +301,40 @@ const ChatInterface = ({ onNewUpload }: ChatInterfaceProps) => {
             sx={{
               display: 'flex',
               justifyContent: msg.isUser ? 'flex-end' : 'flex-start',
-              alignItems: 'flex-end',
-              gap: 1,
-              maxWidth: '85%',
-              alignSelf: msg.isUser ? 'flex-end' : 'flex-start',
+              mb: 2,
             }}
           >
-            {!msg.isUser && (
-              <Avatar
-                sx={{
-                  width: 32,
-                  height: 32,
-                  bgcolor: 'rgba(255, 255, 255, 0.1)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                }}
-              >
-                <ChatIcon sx={{ fontSize: 20 }} />
-              </Avatar>
-            )}
             <Paper
               sx={{
                 p: 2,
-                maxWidth: '100%',
+                maxWidth: '70%',
                 bgcolor: msg.isUser ? 'primary.main' : 'background.paper',
-                color: msg.isUser ? 'primary.contrastText' : 'text.primary',
-                borderRadius: 3,
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                position: 'relative',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  bottom: 0,
-                  [msg.isUser ? 'right' : 'left']: -8,
-                  width: 16,
-                  height: 16,
-                  background: msg.isUser ? 'primary.main' : 'background.paper',
-                  transform: 'rotate(45deg)',
-                  zIndex: 0,
-                },
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  bottom: 0,
-                  [msg.isUser ? 'right' : 'left']: -4,
-                  width: 8,
-                  height: 8,
-                  background: msg.isUser ? 'primary.main' : 'background.paper',
-                  transform: 'rotate(45deg)',
-                  zIndex: 1,
-                },
+                color: msg.isUser ? 'white' : 'text.primary',
+                borderRadius: 2,
+                boxShadow: 1,
               }}
             >
-              <Typography
-                sx={{
-                  position: 'relative',
-                  zIndex: 2,
-                  wordBreak: 'break-word',
-                  whiteSpace: 'pre-wrap',
-                }}
-              >
-                {msg.text}
+              <Typography variant="body1">{msg.text}</Typography>
+              <Typography variant="caption" sx={{ opacity: 0.7, display: 'block', mt: 1 }}>
+                {formatTime(msg.timestamp)}
               </Typography>
             </Paper>
-            {msg.isUser && (
-              <Avatar
-                sx={{
-                  width: 32,
-                  height: 32,
-                  bgcolor: 'primary.dark',
-                }}
-              >
-                <Typography variant="body2">U</Typography>
-              </Avatar>
-            )}
           </Box>
         ))}
+        {isLoading && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+            <Paper
+              sx={{
+                p: 2,
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+                boxShadow: 1,
+              }}
+            >
+              <Typography variant="body1">Thinking...</Typography>
+            </Paper>
+          </Box>
+        )}
       </Box>
 
       <Box
@@ -355,33 +345,20 @@ const ChatInterface = ({ onNewUpload }: ChatInterfaceProps) => {
           boxShadow: '0 -2px 4px rgba(0, 0, 0, 0.1)',
         }}
       >
-        <Box
-          sx={{
-            display: 'flex',
-            gap: 1,
-            maxWidth: 1200,
-            mx: 'auto',
-          }}
-        >
+        <Box sx={{ display: 'flex', gap: 1 }}>
           <TextField
             fullWidth
-            multiline
-            maxRows={4}
+            variant="outlined"
+            placeholder="Type your message..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
-            variant="outlined"
-            size="small"
+            disabled={isLoading}
             sx={{
               '& .MuiOutlinedInput-root': {
-                borderRadius: 3,
-                bgcolor: 'rgba(255, 255, 255, 0.05)',
-                '&:hover': {
-                  bgcolor: 'rgba(255, 255, 255, 0.08)',
-                },
-                '&.Mui-focused': {
-                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                bgcolor: 'background.default',
+                '&:hover fieldset': {
+                  borderColor: 'primary.main',
                 },
               },
             }}
@@ -389,14 +366,16 @@ const ChatInterface = ({ onNewUpload }: ChatInterfaceProps) => {
           <IconButton
             color="primary"
             onClick={handleSendMessage}
-            disabled={!message.trim()}
+            disabled={!message.trim() || isLoading}
             sx={{
-              bgcolor: 'rgba(255, 255, 255, 0.1)',
+              bgcolor: 'primary.main',
+              color: 'white',
               '&:hover': {
-                bgcolor: 'rgba(255, 255, 255, 0.15)',
+                bgcolor: 'primary.dark',
               },
               '&.Mui-disabled': {
-                bgcolor: 'rgba(255, 255, 255, 0.05)',
+                bgcolor: 'action.disabledBackground',
+                color: 'action.disabled',
               },
             }}
           >
