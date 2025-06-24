@@ -7,8 +7,9 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import numpy as np
-from PyPDF2 import PdfReader
+from PyPDF2 import PdfReader 
 from docx import Document
+import re # Import the re module for regular expressions
 
 # Load environment variables
 load_dotenv()
@@ -185,20 +186,57 @@ def process_query(query):
 
         # Generate response
         context = "\n".join(relevant_chunks)
-        prompt = f"""Based on the following context, please answer the question. If the answer cannot be found in the context, say so.
+        
+        # Prompt modified to explicitly request JSON output and provide an example.
+        prompt = f"""Based on the following context, please extract and return information about scholarships.
+Your answer MUST be a valid JSON array. Each object in the array should have a 'name' and 'description' field.
+If only one scholarship is found, return a JSON array with a single object.
+If no scholarship information is found, return an empty JSON array `[]`.
 
 Context:
 {context}
 
 Question: {query}
 
-Answer:"""
-        
+Example JSON output:
+```json
+[
+  {{
+    "name": "Scholarship Name 1",
+    "description": "Description of Scholarship 1."
+  }},
+  {{
+    "name": "Scholarship Name 2",
+    "description": "Description of Scholarship 2."
+  }}
+]
+```
+
+Answer:
+"""
         response = model.generate_content(prompt)
+        
+        # Extract JSON using regex, as the model might include markdown code block syntax
+        json_match = re.search(r"```json\s*(.*?)\s*```", response.text, re.DOTALL)
+        if json_match:
+            json_string = json_match.group(1)
+        else:
+            # If no markdown block is found, try to parse the whole text
+            json_string = response.text
+
+        # Parse the JSON string from the response
+        try:
+            parsed_answer = json.loads(json_string)
+        except json.JSONDecodeError:
+            print(f"Error decoding JSON from model response. Raw response: {response.text}", file=sys.stderr)
+            return {
+                'status': 'error',
+                'message': f"Failed to parse AI model response as JSON. Model output: {response.text}"
+            }
         
         return {
             'status': 'success',
-            'answer': response.text
+            'answer': parsed_answer # Return the parsed JSON object
         }
     except Exception as e:
         print(f"Error processing query: {str(e)}", file=sys.stderr)

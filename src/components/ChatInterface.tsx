@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
   TextField,
@@ -25,7 +25,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import HistoryIcon from '@mui/icons-material/History';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import logo from '../assets/logo.png';
+import Logo from '../assets/logo.png'; 
 
 interface Message {
   id: number;
@@ -41,8 +41,53 @@ interface Chat {
   lastUpdated: Date;
 }
 
+interface ListItem {
+  name?: string;
+  description?: string;
+  [key: string]: any;
+}
+
+interface StructuredContent {
+  items?: ListItem[];
+  message?: string;
+  [key: string]: any;
+}
+
 interface ChatInterfaceProps {
   onNewUpload: () => void;
+}
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('Error in component:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            color: 'error.main',
+            fontStyle: 'italic'
+          }}
+        >
+          Error rendering content. Please try again.
+        </Typography>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 const ChatInterface = ({ onNewUpload }: ChatInterfaceProps) => {
@@ -101,7 +146,7 @@ const ChatInterface = ({ onNewUpload }: ChatInterfaceProps) => {
         
         const botMessage: Message = {
           id: Date.now() + 1,
-          text: result.status === 'success' ? result.answer : result.message,
+          text: result.status === 'success' ? JSON.stringify(result.answer) : result.message, // Stringify the answer
           isUser: false,
           timestamp: new Date(),
         };
@@ -125,6 +170,175 @@ const ChatInterface = ({ onNewUpload }: ChatInterfaceProps) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  const renderMessageContent = (text: string) => {
+    if (!text) return null;
+
+    try {
+      // Try to parse the text as JSON
+      const parsedContent = JSON.parse(text);
+      
+      // If it's an array, render as a list
+      if (Array.isArray(parsedContent)) {
+        return (
+          <ErrorBoundary>
+            <Box sx={{ mt: 1 }}>
+              {parsedContent.length > 0 ? (
+                <List sx={{ listStyleType: 'disc', pl: 2 }}>
+                  {parsedContent.map((item: ListItem, index: number) => (
+                    <ListItem 
+                      key={index} 
+                      sx={{ 
+                        display: 'list-item',
+                        py: 1,
+                        '&::marker': {
+                          color: 'primary.main'
+                        }
+                      }}
+                    >
+                      <Box>
+                        {item.name && (
+                          <Typography 
+                            variant="subtitle1" 
+                            component="span" // Changed to span to avoid nested <p>
+                            sx={{ 
+                              fontWeight: 'bold',
+                              color: 'primary.main',
+                              mb: 0.5
+                            }}
+                          >
+                            {item.name}
+                          </Typography>
+                        )}
+                        {item.description && (
+                          <Typography 
+                            variant="body2" 
+                            component="span" // Changed to span to avoid nested <p>
+                            sx={{ 
+                              color: 'text.secondary',
+                              lineHeight: 1.6
+                            }}
+                          >
+                            {item.description}
+                          </Typography>
+                        )}
+                      </Box>
+                    </ListItem>
+                  ))}
+                </List>
+              ) : (
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    color: 'text.secondary',
+                    fontStyle: 'italic'
+                  }}
+                >
+                  No items found.
+                </Typography>
+              )}
+            </Box>
+          </ErrorBoundary>
+        );
+      }
+      
+      // If it's an object with a specific structure, render accordingly
+      if (parsedContent.items && Array.isArray(parsedContent.items)) {
+        return (
+          <ErrorBoundary>
+            <Box sx={{ mt: 1 }}>
+              {parsedContent.items.length > 0 ? (
+                <List sx={{ listStyleType: 'disc', pl: 2 }}>
+                  {parsedContent.items.map((item: ListItem, index: number) => (
+                    <ListItem 
+                      key={index} 
+                      sx={{ 
+                        display: 'list-item',
+                        py: 1,
+                        '&::marker': {
+                          color: 'primary.main'
+                        }
+                      }}
+                    >
+                      <Box>
+                        {item.name && (
+                          <Typography 
+                            variant="subtitle1" 
+                            component="span" // Changed to span to avoid nested <p>
+                            sx={{ 
+                              fontWeight: 'bold',
+                              color: 'primary.main',
+                              mb: 0.5
+                            }}
+                          >
+                            {item.name}
+                          </Typography>
+                        )}
+                        {item.description && (
+                          <Typography 
+                            variant="body2" 
+                            component="span" // Changed to span to avoid nested <p>
+                            sx={{ 
+                              color: 'text.secondary',
+                              lineHeight: 1.6
+                            }}
+                          >
+                            {item.description}
+                          </Typography>
+                        )}
+                      </Box>
+                    </ListItem>
+                  ))}
+                </List>
+              ) : (
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    color: 'text.secondary',
+                    fontStyle: 'italic'
+                  }}
+                >
+                  No items found.
+                </Typography>
+              )}
+            </Box>
+          </ErrorBoundary>
+        );
+      }
+      
+      // If it's a simple object with a message
+      if (parsedContent.message) {
+        return (
+          <ErrorBoundary>
+            <Typography 
+              variant="body2" 
+              component="span" // Changed to span to avoid nested <p>
+              sx={{ 
+                color: 'text.secondary',
+                fontStyle: 'italic'
+              }}
+            >
+              {parsedContent.message}
+            </Typography>
+          </ErrorBoundary>
+        );
+      }
+      
+      // If JSON parsing succeeds but structure is unknown, return as text
+      return (
+        <ErrorBoundary>
+          <Typography variant="body1" component="span">{text}</Typography>
+        </ErrorBoundary>
+      );
+    } catch (e) {
+      // If JSON parsing fails, return as plain text
+      return (
+        <ErrorBoundary>
+          <Typography variant="body1" component="span">{text}</Typography>
+        </ErrorBoundary>
+      );
     }
   };
 
@@ -154,7 +368,7 @@ const ChatInterface = ({ onNewUpload }: ChatInterfaceProps) => {
           </IconButton>
           <Box
             component="img"
-            src={logo}
+            src={Logo}
             alt="UCS Chat Assistant"
             sx={{
               height: '32px',
@@ -308,16 +522,63 @@ const ChatInterface = ({ onNewUpload }: ChatInterfaceProps) => {
               sx={{
                 p: 2,
                 maxWidth: '70%',
-                bgcolor: msg.isUser ? 'primary.main' : 'background.paper',
-                color: msg.isUser ? 'white' : 'text.primary',
+                bgcolor: msg.isUser 
+                  ? 'primary.dark'  // Darker blue for user messages
+                  : 'background.paper',
+                color: msg.isUser 
+                  ? 'white' 
+                  : 'text.primary',
                 borderRadius: 2,
-                boxShadow: 1,
+                boxShadow: 2,
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  [msg.isUser ? 'right' : 'left']: 0,
+                  width: '100%',
+                  height: '100%',
+                  background: msg.isUser 
+                    ? 'linear-gradient(45deg, rgba(25, 118, 210, 0.1), rgba(25, 118, 210, 0.2))'  // Subtle gradient for user messages
+                    : 'linear-gradient(45deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.1))',  // Subtle gradient for bot messages
+                  borderRadius: 'inherit',
+                  zIndex: 0,
+                },
               }}
             >
-              <Typography variant="body1">{msg.text}</Typography>
-              <Typography variant="caption" sx={{ opacity: 0.7, display: 'block', mt: 1 }}>
-                {formatTime(msg.timestamp)}
-              </Typography>
+              <Box sx={{ position: 'relative', zIndex: 1 }}>
+                <ErrorBoundary>
+                  {/* Changed Typography component to render a 'div' instead of a 'p' */}
+                  <Typography 
+                    variant="body1" 
+                    component="div" 
+                    sx={{ 
+                      fontWeight: 400,
+                      lineHeight: 1.6,
+                      '& a': {
+                        color: msg.isUser ? 'white' : 'primary.main',
+                        textDecoration: 'none',
+                        '&:hover': {
+                          textDecoration: 'underline',
+                        },
+                      },
+                    }}
+                  >
+                    {renderMessageContent(msg.text)}
+                  </Typography>
+                </ErrorBoundary>
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    opacity: 0.7, 
+                    display: 'block', 
+                    mt: 1,
+                    color: msg.isUser ? 'rgba(255, 255, 255, 0.8)' : 'text.secondary',
+                  }}
+                >
+                  {formatTime(msg.timestamp)}
+                </Typography>
+              </Box>
             </Paper>
           </Box>
         ))}
@@ -328,10 +589,32 @@ const ChatInterface = ({ onNewUpload }: ChatInterfaceProps) => {
                 p: 2,
                 bgcolor: 'background.paper',
                 borderRadius: 2,
-                boxShadow: 1,
+                boxShadow: 2,
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  background: 'linear-gradient(45deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.1))',
+                  borderRadius: 'inherit',
+                  zIndex: 0,
+                },
               }}
             >
-              <Typography variant="body1">Thinking...</Typography>
+              <Box sx={{ position: 'relative', zIndex: 1 }}>
+                <Typography 
+                  variant="body1" 
+                  sx={{ 
+                    fontWeight: 400,
+                    color: 'text.secondary',
+                  }}
+                >
+                  Thinking...
+                </Typography>
+              </Box>
             </Paper>
           </Box>
         )}
@@ -387,4 +670,4 @@ const ChatInterface = ({ onNewUpload }: ChatInterfaceProps) => {
   );
 };
 
-export default ChatInterface; 
+export default ChatInterface;
